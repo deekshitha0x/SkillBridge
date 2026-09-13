@@ -64,33 +64,51 @@ export function InstitutionDashboard() {
       {/* Aggregate Skill Metrics Table */}
       <Card>
         <CardHeader
-          title="Campus Skill Verification Profile"
-          subtitle="Aggregate breakdowns: Claimed vs Verified vs Level 2+ Proficiency"
+          title="Campus Skill Verification Profile & Gap Analysis"
+          subtitle="Status Breakdown per Skill: Pending vs Claimed vs Verified vs Level 2+ Thresholds"
         />
         <div className="overflow-x-auto border border-hairline-grey rounded-lg bg-white">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-bone/80 border-b border-hairline-grey font-mono text-xs text-slate uppercase tracking-wider">
                 <th className="py-3 px-4">Skill Name</th>
+                <th className="py-3 px-4 text-center">Pending Count</th>
                 <th className="py-3 px-4 text-center">Claimed Count</th>
                 <th className="py-3 px-4 text-center">Verified Count</th>
-                <th className="py-3 px-4 text-center">Level ≥ 2 Proficiency</th>
+                <th className="py-3 px-4 text-center">Level ≥ 2 Threshold</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline-grey/60 text-sm">
               {skillStats.map((st) => {
-                const verifiedPct = st.claimedCount > 0 ? Math.round((st.verifiedCount / st.claimedCount) * 100) : 0;
+                const totalWithSk = st.totalWithSkill || (st.pendingCount || 0) + st.claimedCount + st.verifiedCount;
+                const verifiedPct = totalWithSk > 0 ? Math.round((st.verifiedCount / totalWithSk) * 100) : 0;
                 return (
                   <tr key={st.skillId} className="hover:bg-bone/30">
-                    <td className="py-3.5 px-4 font-semibold text-ink-navy">{st.skillName}</td>
-                    <td className="py-3.5 px-4 text-center font-mono font-medium">
-                      {st.claimedCount} students
+                    <td className="py-3.5 px-4 font-semibold text-ink-navy">
+                      <div>
+                        <span>{st.skillName}</span>
+                        <span className="text-[10px] text-slate font-mono block">
+                          Total students: {totalWithSk}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-center font-mono text-slate">
+                      <span className="px-2 py-0.5 rounded bg-bone border border-hairline-grey text-xs">
+                        {st.pendingCount || 0}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center font-mono font-medium text-ink-navy">
+                      <span className="px-2 py-0.5 rounded bg-ledger-gold/10 text-ink-navy border border-ledger-gold/20 text-xs">
+                        {st.claimedCount}
+                      </span>
                     </td>
                     <td className="py-3.5 px-4 text-center font-mono font-bold text-verified-green">
-                      {st.verifiedCount} ({verifiedPct}%)
+                      <span className="px-2.5 py-0.5 rounded bg-verified-green/10 text-verified-green border border-verified-green/30 text-xs">
+                        {st.verifiedCount} ({verifiedPct}%)
+                      </span>
                     </td>
                     <td className="py-3.5 px-4 text-center font-mono font-bold text-ink-navy">
-                      <span className="px-2.5 py-0.5 rounded bg-ledger-gold/15 text-ledger-gold border border-ledger-gold/30">
+                      <span className="px-2.5 py-0.5 rounded bg-ledger-gold/20 text-ledger-gold border border-ledger-gold/40 text-xs">
                         {st.level2PlusCount} students
                       </span>
                     </td>
@@ -123,10 +141,13 @@ export function InstitutionDashboard() {
 
               <div className="flex items-center gap-4">
                 <span className="text-slate">
-                  Verified Skills: <strong className="text-verified-green">{st.verifiedSkillsCount}</strong>
+                  Verified: <strong className="text-verified-green">{st.verifiedSkillsCount}</strong>
                 </span>
                 <span className="text-slate">
-                  Claimed Skills: <strong className="text-ink-navy">{st.claimedSkillsCount}</strong>
+                  Claimed: <strong className="text-ink-navy">{st.claimedSkillsCount}</strong>
+                </span>
+                <span className="text-slate">
+                  Pending: <strong className="text-slate">{st.pendingSkillsCount || 0}</strong>
                 </span>
               </div>
             </div>

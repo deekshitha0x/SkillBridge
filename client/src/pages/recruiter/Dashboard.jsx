@@ -33,6 +33,25 @@ export function RecruiterDashboard() {
     loadRecruiterData();
   }, []);
 
+  const handleToggleChallengeStatus = async (challengeId, currentStatus) => {
+    const nextStatus = currentStatus === 'closed' ? 'open' : 'closed';
+    try {
+      await apiFetch(`/api/challenges/${challengeId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      // Reload data
+      const [jData, cData] = await Promise.all([
+        apiFetch('/api/jobs'),
+        apiFetch('/api/challenges'),
+      ]);
+      setJobs(jData);
+      setChallenges(cData);
+    } catch (err) {
+      console.error('Failed to toggle challenge status:', err);
+    }
+  };
+
   const totalSubmissions = challenges.reduce((sum, ch) => sum + (ch._count?.submissions || 0), 0);
 
   return (
@@ -94,7 +113,7 @@ export function RecruiterDashboard() {
       <Card>
         <CardHeader
           title="Active Job Prerequisites & Challenges"
-          subtitle="Manage requirements and view submitted solutions"
+          subtitle="Manage requirements, challenge statuses, and view submitted solutions"
           action={
             <Button variant="outline" size="sm" onClick={() => navigate('/recruiter/new-job')}>
               + Add Job
@@ -103,22 +122,55 @@ export function RecruiterDashboard() {
         />
         {loading ? (
           <div className="p-4 text-center text-xs text-slate font-mono">Loading postings...</div>
+        ) : jobs.length === 0 ? (
+          <div className="p-4 text-center text-xs text-slate font-mono bg-bone/40 border border-dashed rounded">
+            No active job postings created yet. Click "+ Add Job" above to create one.
+          </div>
         ) : (
           <div className="space-y-4">
-            {jobs.map((j) => (
-              <div key={j.id} className="p-4 rounded-lg border border-hairline-grey hover:border-slate transition bg-white">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-serif font-bold text-lg text-ink-navy">{j.title}</h4>
-                    <p className="text-xs text-slate mt-0.5 line-clamp-1">{j.description}</p>
+            {jobs.map((j) => {
+              const jobChallenges = challenges.filter((c) => c.jobId === j.id);
+              return (
+                <div key={j.id} className="p-4 rounded-lg border border-hairline-grey hover:border-slate transition bg-white space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-serif font-bold text-lg text-ink-navy">{j.title}</h4>
+                      <p className="text-xs text-slate mt-0.5 line-clamp-2">{j.description}</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => navigate('/recruiter/submissions')} className="flex items-center gap-1 shrink-0">
+                      Review Code
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/recruiter/submissions')} className="flex items-center gap-1">
-                    Review Code
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+
+                  {jobChallenges.length > 0 && (
+                    <div className="pt-2 border-t border-hairline-grey/60 space-y-2">
+                      <span className="text-[10px] font-mono uppercase text-slate block">Attached Hiring Challenges:</span>
+                      {jobChallenges.map((ch) => (
+                        <div key={ch.id} className="p-2.5 bg-bone/50 rounded flex items-center justify-between font-mono text-xs">
+                          <div>
+                            <span className="font-bold text-ink-navy block">{ch.title}</span>
+                            <span className="text-[11px] text-slate">Difficulty: Level {ch.difficultyLevel}/5</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={ch.status === 'closed' ? 'coral' : 'verified'} icon={false}>
+                              {ch.status === 'closed' ? 'Closed' : 'Open'}
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleChallengeStatus(ch.id, ch.status)}
+                            >
+                              {ch.status === 'closed' ? 'Reopen Challenge' : 'Close Challenge'}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>

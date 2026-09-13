@@ -196,7 +196,7 @@ router.post('/:id/submit', requireAuth, requireRole('student'), async (req, res)
 router.post('/:id/review', requireAuth, requireRole('recruiter'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { submissionId, verified } = req.body;
+    const { submissionId, verified, hiringStatus } = req.body;
 
     if (!submissionId) {
       return res.status(400).json({ error: 'submissionId is required' });
@@ -212,6 +212,9 @@ router.post('/:id/review', requireAuth, requireRole('recruiter'), async (req, re
     }
 
     const isVerified = Boolean(verified);
+    const validHiringStatus = ['pending', 'shortlisted', 'hired', 'rejected'].includes(hiringStatus)
+      ? hiringStatus
+      : submission.hiringStatus || 'pending';
 
     // Identify primary skill associated with challenge
     const reqSkills = Array.isArray(submission.challenge.requiredSkills)
@@ -237,12 +240,13 @@ router.post('/:id/review', requireAuth, requireRole('recruiter'), async (req, re
 
     // Execute in a single Prisma transaction
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Update Submission status
+      // 1. Update Submission status & hiringStatus
       const updatedSubmission = await tx.submission.update({
         where: { id: submissionId },
         data: {
           status: 'reviewed',
           verifiedByRecruiter: isVerified,
+          hiringStatus: validHiringStatus,
         },
       });
 
@@ -289,6 +293,34 @@ router.post('/:id/review', requireAuth, requireRole('recruiter'), async (req, re
   } catch (error) {
     console.error('Review submission error:', error);
     res.status(500).json({ error: 'Failed to record submission review' });
+  }
+});
+
+/**
+ * PATCH /api/challenges/:id/status
+ * Toggle or set challenge status ('open' | 'closed') (Recruiter only)
+ */
+router.patch('/:id/status', requireAuth, requireRole('recruiter'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['open', 'closed'].includes(status)) {
+      return res.status(400).json({ error: "Status must be 'open' or 'closed'" });
+    }
+
+    const updated = await prisma.challenge.update({
+      where: { id },
+      data: { status },
+    });
+
+    res.json({
+      message: `Challenge status updated to ${status}`,
+      challenge: updated,
+    });
+  } catch (error) {
+    console.error('Update challenge status error:', error);
+    res.status(500).json({ error: 'Failed to update challenge status' });
   }
 });
 
