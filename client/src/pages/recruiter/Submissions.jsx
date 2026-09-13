@@ -31,7 +31,7 @@ export function RecruiterSubmissions() {
     loadSubmissions();
   }, []);
 
-  const handleReviewSubmission = async (challengeId, submissionId, verified) => {
+  const handleReviewSubmission = async (challengeId, submissionId, verified, hiringStatus = 'pending') => {
     setActionLoading(true);
     setMessage('');
     try {
@@ -40,10 +40,11 @@ export function RecruiterSubmissions() {
         body: JSON.stringify({
           submissionId,
           verified,
+          hiringStatus,
         }),
       });
 
-      setMessage(res.message || 'Submission reviewed and skill level verified!');
+      setMessage(res.message || 'Submission review recorded successfully!');
       loadSubmissions();
     } catch (err) {
       console.error('Failed to review submission:', err);
@@ -57,7 +58,7 @@ export function RecruiterSubmissions() {
       <div>
         <h1 className="font-serif text-2xl font-bold text-ink-navy">Challenge Solution Submissions</h1>
         <p className="text-xs text-slate mt-1 font-mono">
-          Review candidate code solutions and verify hiring challenge capabilities.
+          Review candidate code solutions, verify skill levels, and manage hiring outcomes.
         </p>
       </div>
 
@@ -80,11 +81,16 @@ export function RecruiterSubmissions() {
               <Card key={ch.id}>
                 <CardHeader
                   title={ch.title}
-                  subtitle={`Job: ${ch.job ? ch.job.title : 'Posting'} | Difficulty: ${ch.difficultyLevel}/5`}
+                  subtitle={`Job: ${ch.job ? ch.job.title : 'Posting'} | Difficulty: Level ${ch.difficultyLevel}/5`}
                   action={
-                    <Badge variant="gold" icon={false}>
-                      {submissions.length} Submission{submissions.length !== 1 ? 's' : ''}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={ch.status === 'closed' ? 'coral' : 'verified'} icon={false}>
+                        {ch.status === 'closed' ? 'Challenge Closed' : 'Active Challenge'}
+                      </Badge>
+                      <Badge variant="gold" icon={false}>
+                        {submissions.length} Submission{submissions.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
                   }
                 />
 
@@ -94,58 +100,99 @@ export function RecruiterSubmissions() {
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    {submissions.map((sub) => (
-                      <div
-                        key={sub.id}
-                        className="p-4 rounded-lg border border-hairline-grey bg-bone/30 space-y-3"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-hairline-grey/60 pb-3">
+                    {submissions.map((sub) => {
+                      const hiringState = sub.hiringStatus || 'pending';
+                      return (
+                        <div
+                          key={sub.id}
+                          className="p-4 rounded-lg border border-hairline-grey bg-bone/30 space-y-3"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-hairline-grey/60 pb-3">
+                            <div>
+                              <span className="font-serif font-bold text-sm text-ink-navy">
+                                Candidate: {sub.user ? sub.user.name : 'Student'}
+                              </span>
+                              <span className="text-xs font-mono text-slate block">
+                                Email: {sub.user ? sub.user.email : 'Unknown'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-mono text-slate mr-2">
+                                Tab Switches: <strong className={sub.tabSwitches > 0 ? 'text-alert-coral' : 'text-verified-green'}>{sub.tabSwitches}</strong>
+                              </span>
+
+                              {sub.verifiedByRecruiter ? (
+                                <Badge variant="verified">Skill Verified</Badge>
+                              ) : (
+                                <Badge variant="coral">Pending Skill Verification</Badge>
+                              )}
+
+                              {hiringState === 'hired' && <Badge variant="verified">Hired 🎉</Badge>}
+                              {hiringState === 'shortlisted' && <Badge variant="gold">Shortlisted ⭐</Badge>}
+                              {hiringState === 'rejected' && <Badge variant="coral">Not Selected</Badge>}
+                            </div>
+                          </div>
+
                           <div>
-                            <span className="font-serif font-bold text-sm text-ink-navy">
-                              Candidate: {sub.user ? sub.user.name : 'Student'}
+                            <span className="text-[10px] font-mono uppercase text-slate block mb-1">
+                              Candidate Code Solution
                             </span>
-                            <span className="text-xs font-mono text-slate block">
-                              Email: {sub.user ? sub.user.email : 'Unknown'}
-                            </span>
+                            <pre className="p-3 bg-ink-navy text-bone rounded font-mono text-xs overflow-x-auto">
+                              {sub.content}
+                            </pre>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-mono text-slate">
-                              Tab Switches: <strong className={sub.tabSwitches > 0 ? 'text-alert-coral' : 'text-verified-green'}>{sub.tabSwitches}</strong>
-                            </span>
-                            {sub.verifiedByRecruiter ? (
-                              <Badge variant="verified">Reviewed & Verified</Badge>
+                          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-hairline-grey/60">
+                            {!sub.verifiedByRecruiter ? (
+                              <Button
+                                variant="verified"
+                                size="sm"
+                                disabled={actionLoading}
+                                onClick={() => handleReviewSubmission(ch.id, sub.id, true, hiringState)}
+                                className="flex items-center gap-1.5"
+                              >
+                                <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                                Approve & Verify Skill Level
+                              </Button>
                             ) : (
-                              <Badge variant="coral">Pending Review</Badge>
+                              <span className="text-xs font-mono text-verified-green font-semibold flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Candidate Skill Level Verified
+                              </span>
                             )}
+
+                            {/* Hiring Actions */}
+                            <div className="flex items-center gap-2 ml-auto">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={actionLoading || hiringState === 'shortlisted'}
+                                onClick={() => handleReviewSubmission(ch.id, sub.id, sub.verifiedByRecruiter, 'shortlisted')}
+                              >
+                                Shortlist
+                              </Button>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                disabled={actionLoading || hiringState === 'hired'}
+                                onClick={() => handleReviewSubmission(ch.id, sub.id, true, 'hired')}
+                              >
+                                Hire Candidate
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                disabled={actionLoading || hiringState === 'rejected'}
+                                onClick={() => handleReviewSubmission(ch.id, sub.id, sub.verifiedByRecruiter, 'rejected')}
+                              >
+                                Reject
+                              </Button>
+                            </div>
                           </div>
                         </div>
-
-                        <div>
-                          <span className="text-[10px] font-mono uppercase text-slate block mb-1">
-                            Candidate Code Solution
-                          </span>
-                          <pre className="p-3 bg-ink-navy text-bone rounded font-mono text-xs overflow-x-auto">
-                            {sub.content}
-                          </pre>
-                        </div>
-
-                        {!sub.verifiedByRecruiter && (
-                          <div className="pt-2 flex justify-end border-t border-hairline-grey/60">
-                            <Button
-                              variant="verified"
-                              size="sm"
-                              disabled={actionLoading}
-                              onClick={() => handleReviewSubmission(ch.id, sub.id, true)}
-                              className="flex items-center gap-1.5"
-                            >
-                              <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                              Approve & Verify Skill Level
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </Card>
