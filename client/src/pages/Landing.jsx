@@ -22,11 +22,7 @@ export function Landing() {
   const { isAuthenticated, user } = useAuth();
 
   const handleCTA = () => {
-    if (isAuthenticated && user?.role) {
-      navigate(`/${user.role}/dashboard`);
-    } else {
-      navigate('/login');
-    }
+    navigate('/login?mode=signup');
   };
 
   return (
@@ -49,8 +45,8 @@ export function Landing() {
           </div>
 
           <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <Button variant="primary" onClick={handleCTA}>
+            {isAuthenticated && user?.role ? (
+              <Button variant="primary" onClick={() => navigate(`/${user.role}/dashboard`)}>
                 Go to Dashboard
               </Button>
             ) : (
@@ -58,8 +54,8 @@ export function Landing() {
                 <Button variant="outline" onClick={() => navigate('/login')}>
                   Log In
                 </Button>
-                <Button variant="primary" onClick={() => navigate('/login')}>
-                  Get Started
+                <Button variant="primary" onClick={() => navigate('/login?mode=signup')}>
+                  Sign Up
                 </Button>
               </>
             )}
@@ -87,16 +83,13 @@ export function Landing() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button variant="primary" size="lg" onClick={handleCTA} className="w-full sm:w-auto shadow-md">
-            Enter Platform Demo
+          <Button variant="primary" size="lg" onClick={() => navigate('/login?mode=signup')} className="w-full sm:w-auto shadow-md">
+            Get Started
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
-          <a
-            href="#how-it-works"
-            className="w-full sm:w-auto px-6 py-3 rounded-md border border-hairline-grey text-ink-navy text-sm font-medium hover:bg-white text-center transition"
-          >
-            Explore Core Loop
-          </a>
+          <Button variant="outline" size="lg" onClick={() => navigate('/login')} className="w-full sm:w-auto shadow-md">
+            Log In
+          </Button>
         </div>
       </section>
 
@@ -190,55 +183,50 @@ export function Landing() {
             Tailored Dashboards for 3 Key Stakeholders
           </h2>
           <p className="text-sm text-slate mt-2">
-            Seamless monorepo experience with role-gated access control
+            How skills progress from self-declared claims to recruiter-verified assets
           </p>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Card className="hover:border-ink-navy">
-            <div className="w-10 h-10 rounded-lg bg-ink-navy/10 flex items-center justify-center text-ink-navy mb-4">
-              <GraduationCap className="w-6 h-6" />
-            </div>
-            <h3 className="font-serif text-xl font-bold text-ink-navy mb-2">For Students</h3>
-            <p className="text-sm text-slate mb-4">
-              Declare skills, take anti-cheat verification quizzes, check job prerequisite eligibility, and submit challenge solutions.
-            </p>
-            <ul className="space-y-2 text-xs font-mono text-slate mb-6">
-              <li className="flex items-center gap-1.5">✓ Simulated Aadhaar verification</li>
-              <li className="flex items-center gap-1.5">✓ Verified Skill Profile portfolio</li>
-              <li className="flex items-center gap-1.5">✓ Challenge submission proctoring</li>
-            </ul>
-          </Card>
+      {/* Role Cards Section */}
+      <section id="roles" className="py-16 bg-bone">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="hover:border-slate/40">
+              <div className="w-10 h-10 rounded-lg bg-ink-navy text-bone flex items-center justify-center mb-4 font-bold">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <h3 className="font-serif text-xl font-bold text-ink-navy mb-2">For Students</h3>
+              <p className="text-sm text-slate mb-4">
+                Claim skills, take verification quizzes, build a portable Skill Profile, and complete hiring challenges.
+              </p>
+            </Card>
 
-          <Card className="hover:border-ink-navy">
-            <div className="w-10 h-10 rounded-lg bg-ledger-gold/10 flex items-center justify-center text-ledger-gold mb-4">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <h3 className="font-serif text-xl font-bold text-ink-navy mb-2">For Recruiters</h3>
-            <p className="text-sm text-slate mb-4">
-              Post job prerequisites, create challenge assessments, review candidate code, and verify candidate skill levels in a single transaction.
-            </p>
-            <ul className="space-y-2 text-xs font-mono text-slate mb-6">
-              <li className="flex items-center gap-1.5">✓ Rule-based job similarity ranking</li>
-              <li className="flex items-center gap-1.5">✓ One-click submission verification</li>
-              <li className="flex items-center gap-1.5">✓ Verified candidate pool search</li>
-            </ul>
-          </Card>
+            <Card className="hover:border-slate/40">
+              <div className="w-10 h-10 rounded-lg bg-ledger-gold text-ink-navy flex items-center justify-center mb-4 font-bold">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <h3 className="font-serif text-xl font-bold text-ink-navy mb-2">For Recruiters</h3>
+              <p className="text-sm text-slate mb-4">
+                Publish job prerequisites, set up code challenges, review submissions, and filter verified candidates.
+              </p>
+            </Card>
 
-          <Card className="hover:border-ink-navy">
-            <div className="w-10 h-10 rounded-lg bg-verified-green/10 flex items-center justify-center text-verified-green mb-4">
-              <Users className="w-6 h-6" />
-            </div>
-            <h3 className="font-serif text-xl font-bold text-ink-navy mb-2">For Institutions</h3>
-            <p className="text-sm text-slate mb-4">
-              Track aggregate student skill analytics, verified skill ratios, level readiness breakdowns, and student leaderboards.
-            </p>
-            <ul className="space-y-2 text-xs font-mono text-slate mb-6">
-              <li className="flex items-center gap-1.5">✓ Real-time skill readiness matrix</li>
-              <li className="flex items-center gap-1.5">✓ Level 2+ skill proficiency tracking</li>
-              <li className="flex items-center gap-1.5">✓ Aggregate credit distribution</li>
-            </ul>
-          </Card>
+            <Card className="hover:border-slate/40">
+              <div className="w-10 h-10 rounded-lg bg-verified-green text-white flex items-center justify-center mb-4 font-bold">
+                <Users className="w-6 h-6" />
+              </div>
+              <h3 className="font-serif text-xl font-bold text-ink-navy mb-2">For Institutions</h3>
+              <p className="text-sm text-slate mb-4">
+                Track aggregate student skill analytics, verified skill ratios, level readiness breakdowns, and student leaderboards.
+              </p>
+              <ul className="space-y-2 text-xs font-mono text-slate mb-6">
+                <li className="flex items-center gap-1.5">✓ Real-time skill readiness matrix</li>
+                <li className="flex items-center gap-1.5">✓ Level 2+ skill proficiency tracking</li>
+                <li className="flex items-center gap-1.5">✓ Aggregate verified skill distribution</li>
+              </ul>
+            </Card>
+          </div>
         </div>
       </section>
 

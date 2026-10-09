@@ -37,6 +37,34 @@ export function AuthProvider({ children }) {
     localStorage.setItem('sb_user', JSON.stringify(newUser));
   };
 
+  const loginWithCredentials = async (email, password) => {
+    try {
+      const data = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      login(data.token, data.user);
+      return data.user;
+    } catch (err) {
+      console.error('Login credentials error:', err);
+      throw err;
+    }
+  };
+
+  const signup = async ({ email, password, name, role }) => {
+    try {
+      const data = await apiFetch('/api/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, name, role }),
+      });
+      login(data.token, data.user);
+      return data.user;
+    } catch (err) {
+      console.error('Signup error:', err);
+      throw err;
+    }
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -96,6 +124,8 @@ export function AuthProvider({ children }) {
         user,
         loading,
         login,
+        loginWithCredentials,
+        signup,
         logout,
         updateRole,
         verifyAadhaarSimulated,

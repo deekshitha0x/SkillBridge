@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
- * Validates whether a student user meets the skill level and credit requirements for a challenge.
+ * Validates whether a student user meets the skill level requirements for a challenge.
  *
  * @param {string} studentUserId
  * @param {string} challengeId
@@ -22,7 +22,7 @@ export async function checkEligibility(studentUserId, challengeId) {
     ? challenge.requiredSkills
     : [];
 
-  // Fetch student's verified skills
+  // Fetch student's skills
   const studentSkills = await prisma.studentSkill.findMany({
     where: {
       userId: studentUserId,
@@ -58,10 +58,10 @@ export async function checkEligibility(studentUserId, challengeId) {
       continue;
     }
 
-    if (studentSkill.status !== 'verified') {
+    if (studentSkill.status === 'pending') {
       eligible = false;
       reasons.push(
-        `Skill "${sName}" is not verified. Complete verification to qualify.`
+        `Skill "${sName}" status is Pending. Take the verification quiz to claim it first.`
       );
       continue;
     }
@@ -69,7 +69,7 @@ export async function checkEligibility(studentUserId, challengeId) {
     if (studentSkill.level < reqLevel) {
       eligible = false;
       reasons.push(
-        `Skill "${sName}" level is ${studentSkill.level}, but Level ${reqLevel} is required.`
+        `Skill "${sName}" level is ${studentSkill.level}, but Level ${reqLevel}+ is required.`
       );
     }
   }

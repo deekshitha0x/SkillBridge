@@ -5,6 +5,7 @@ import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { RequiredSkillsTable } from '../../components/jobs/RequiredSkillsTable';
 import { SimilarJobsList } from '../../components/jobs/SimilarJobsList';
+import { StudyMaterials } from '../../components/jobs/StudyMaterials';
 import { Building2, ArrowLeft, Zap, Briefcase } from 'lucide-react';
 
 export function StudentJobDetail() {
@@ -98,6 +99,9 @@ export function StudentJobDetail() {
         />
         <RequiredSkillsTable requiredSkills={requiredSkills} studentSkills={studentSkillMap} />
       </Card>
+
+      {/* Study Materials & Preparation Resources (Section 5.5) */}
+      <StudyMaterials requiredSkills={requiredSkills} />
 
       {/* Linked Hiring Challenges */}
       <Card>
