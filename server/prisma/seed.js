@@ -1,3 +1,15 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+const dbUrl = process.env.DATABASE_URL || '';
+const isScratch = dbUrl.toLowerCase().includes('scratch');
+const allowDev = process.env.SEED_ALLOW_DEV === '1';
+
+if (!isScratch && !allowDev) {
+  console.error('REFUSED: seed.js can only run against a database whose name contains "scratch" unless SEED_ALLOW_DEV=1 is set.');
+  process.exit(1);
+}
+
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -219,6 +231,19 @@ async function main() {
       timeLimitMinutes: 60,
       requiredSkills: [
         { skillId: skillMap['Python'].id, skillName: 'Python', minLevel: 2 },
+      ],
+    },
+  });
+
+  const challenge3 = await prisma.challenge.create({
+    data: {
+      jobId: job3.id,
+      title: 'SQL Query Optimization',
+      description: 'Optimize complex analytical queries and implement indexed aggregations for large datasets.',
+      difficultyLevel: 3,
+      timeLimitMinutes: 45,
+      requiredSkills: [
+        { skillId: skillMap['SQL'].id, skillName: 'SQL', minLevel: 2 },
       ],
     },
   });

@@ -6,6 +6,102 @@ import { requireRole } from '../middleware/requireRole.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// In-memory store for server-side quiz start times and sessions
+// Key: `${userId}:${skillId}` -> { startTime, timeLimitSeconds }
+export const quizSessions = new Map();
+export const GRACE_WINDOW_SECONDS = 15;
+export const DEFAULT_QUIZ_DURATION_SECONDS = 180; // 3 minutes default
+
+/**
+ * Removes abandoned, expired quiz sessions from the in-memory map
+ */
+export function cleanupExpiredSessions() {
+  const now = Date.now();
+  for (const [key, session] of quizSessions.entries()) {
+    const maxAllowedMs = (session.timeLimitSeconds + GRACE_WINDOW_SECONDS) * 1000;
+    if (now - session.startTime > maxAllowedMs) {
+      quizSessions.delete(key);
+    }
+  }
+}
+
+/**
+ * Returns an existing active, unexpired session for the user and skill,
+ * or registers a new session if none exists or the previous session expired.
+ */
+export function getOrCreateQuizSession(userId, skillId, durationSeconds = DEFAULT_QUIZ_DURATION_SECONDS) {
+  cleanupExpiredSessions();
+  const sessionKey = `${userId}:${skillId}`;
+  const existing = quizSessions.get(sessionKey);
+  const now = Date.now();
+
+  // If a valid unexpired session already exists, reuse it (do not reset timer)
+  if (existing && (now - existing.startTime) < (existing.timeLimitSeconds + GRACE_WINDOW_SECONDS) * 1000) {
+    return existing;
+  }
+
+  // Otherwise, initialize a fresh session
+  const newSession = {
+    startTime: now,
+    timeLimitSeconds: durationSeconds,
+  };
+  quizSessions.set(sessionKey, newSession);
+  return newSession;
+}
+
+/**
+ * Validates the quiz submission against the server-recorded session timer.
+ * Consumes and deletes the session upon submission attempt so retakes start fresh.
+ */
+export function validateAndConsumeQuizSession(userId, skillId) {
+  const sessionKey = `${userId}:${skillId}`;
+  const session = quizSessions.get(sessionKey);
+
+  // Always delete session on submission attempt so retakes start fresh and memory is freed
+  if (session) {
+    quizSessions.delete(sessionKey);
+  }
+
+  // Sweep any other abandoned expired sessions
+  cleanupExpiredSessions();
+
+  if (!session) {
+    return {
+      valid: false,
+      error: 'No active quiz session found. You must start the quiz before submitting.',
+      sessionMissing: true,
+    };
+  }
+
+  const now = Date.now();
+  const calculatedTimeSpent = Math.round((now - session.startTime) / 1000);
+  const maxAllowed = session.timeLimitSeconds + GRACE_WINDOW_SECONDS;
+
+  if (calculatedTimeSpent > maxAllowed) {
+    return {
+      valid: false,
+      timedOut: true,
+      timeSpentSeconds: calculatedTimeSpent,
+      error: `Quiz time limit exceeded (${calculatedTimeSpent}s elapsed; limit was ${session.timeLimitSeconds}s + ${GRACE_WINDOW_SECONDS}s grace window).`,
+    };
+  }
+
+  return {
+    valid: true,
+    timeSpentSeconds: calculatedTimeSpent,
+  };
+}
+
+/**
+ * Maps a quiz score to a skill level (1 to 5)
+ */
+export function calculateQuizScoreLevel(correctCount, totalQuestions) {
+  return Math.min(
+    5,
+    Math.max(1, Math.round((correctCount / (totalQuestions || 1)) * 5))
+  );
+}
+
 /**
  * GET /api/assessments/:skillId
  * Get assessment quiz questions for a skill
@@ -37,6 +133,16 @@ router.get('/:skillId', requireAuth, async (req, res) => {
       options: q.options,
     }));
 
+    const durationSeconds = Math.max(
+      DEFAULT_QUIZ_DURATION_SECONDS,
+      sanitizedQuestions.length * 60
+    );
+
+    // Get existing unexpired session or create a new one (prevents timer reset on page refresh)
+    const session = getOrCreateQuizSession(req.user.id, skillId, durationSeconds);
+    const elapsedSeconds = Math.round((Date.now() - session.startTime) / 1000);
+    const remainingSeconds = Math.max(0, session.timeLimitSeconds - elapsedSeconds);
+
     res.json({
       assessmentId: assessment.id,
       skillId: assessment.skillId,
@@ -44,6 +150,8 @@ router.get('/:skillId', requireAuth, async (req, res) => {
       passScore: assessment.passScore,
       questions: sanitizedQuestions,
       questionCount: sanitizedQuestions.length,
+      timeLimitSeconds: session.timeLimitSeconds,
+      remainingSeconds,
     });
   } catch (error) {
     console.error('Fetch assessment error:', error);
@@ -62,7 +170,20 @@ router.post(
   async (req, res) => {
     try {
       const { skillId } = req.params;
-      const { answers, timeSpentSeconds, tabSwitches } = req.body;
+      const { answers, tabSwitches } = req.body;
+
+      // Server-side timer check
+      const sessionResult = validateAndConsumeQuizSession(req.user.id, skillId);
+      if (!sessionResult.valid) {
+        return res.status(400).json({
+          error: sessionResult.error,
+          timedOut: sessionResult.timedOut || false,
+          sessionMissing: sessionResult.sessionMissing || false,
+          timeSpentSeconds: sessionResult.timeSpentSeconds || 0,
+        });
+      }
+
+      const calculatedTimeSpent = sessionResult.timeSpentSeconds;
 
       const assessment = await prisma.assessment.findUnique({
         where: { skillId },
@@ -102,10 +223,7 @@ router.post(
           },
         });
 
-        const scoreLevel = Math.min(
-          5,
-          Math.max(1, Math.round((correctCount / (totalQuestions || 1)) * 5))
-        );
+        const scoreLevel = calculateQuizScoreLevel(correctCount, totalQuestions);
 
         studentSkill = await prisma.studentSkill.upsert({
           where: {
@@ -135,7 +253,7 @@ router.post(
         totalQuestions,
         passScore: assessment.passScore,
         tabSwitches: tabSwitches || 0,
-        timeSpentSeconds: timeSpentSeconds || 0,
+        timeSpentSeconds: calculatedTimeSpent,
         studentSkill,
         message: passed
           ? 'Congratulations! Assessment quiz passed and skill claimed.'

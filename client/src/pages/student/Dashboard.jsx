@@ -195,7 +195,16 @@ export function StudentDashboard() {
                       Submitted on {new Date(sub.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  {sub.verifiedByRecruiter ? (
+                  {sub.isWaiver ? (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="gold" icon={false}>Pre-verified application</Badge>
+                      {sub.hiringStatus && sub.hiringStatus !== 'pending' && (
+                        <Badge variant={sub.hiringStatus === 'hired' ? 'verified' : sub.hiringStatus === 'shortlisted' ? 'gold' : 'coral'}>
+                          {sub.hiringStatus.toUpperCase()}
+                        </Badge>
+                      )}
+                    </div>
+                  ) : sub.verifiedByRecruiter ? (
                     <Badge variant="verified">Verified</Badge>
                   ) : sub.status === 'reviewed' ? (
                     <Badge variant="claimed">Reviewed</Badge>

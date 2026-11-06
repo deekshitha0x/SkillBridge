@@ -4,6 +4,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL ERROR: JWT_SECRET environment variable is missing.');
+  process.exit(1);
+}
+
 import authRoutes from './routes/auth.js';
 import skillsRoutes from './routes/skills.js';
 import assessmentsRoutes from './routes/assessments.js';

@@ -56,6 +56,13 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// Mapping of demo roles to specific demo user accounts
+const DEMO_EMAILS = {
+  student: 'alex.chen@student.nit.edu',
+  recruiter: 'sarah@techcorp.com',
+  institution: 'dean@nit.edu',
+};
+
 /**
  * POST /api/auth/demo-login
  * Fast demo login for hackathon testing without needing OAuth steps
@@ -63,26 +70,19 @@ router.post('/google', async (req, res) => {
 router.post('/demo-login', async (req, res) => {
   try {
     const { role } = req.body; // 'student', 'recruiter', 'institution'
-    const targetRole = role || 'student';
+    const targetEmail = DEMO_EMAILS[role];
 
-    let user = await prisma.user.findFirst({
-      where: { role: targetRole },
+    if (!targetEmail) {
+      return res.status(400).json({ error: 'Invalid demo role requested' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: targetEmail },
       include: { institution: true, company: true },
     });
 
     if (!user) {
-      // Fallback create demo user if missing
-      const inst = await prisma.institution.findFirst();
-      user = await prisma.user.create({
-        data: {
-          email: `demo.${targetRole}@skillbridge.edu`,
-          name: `Demo ${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)}`,
-          role: targetRole,
-          institutionId: inst ? inst.id : null,
-          aadhaarVerified: targetRole === 'student',
-        },
-        include: { institution: true, company: true },
-      });
+      return res.status(404).json({ error: `Demo user for role '${role}' (${targetEmail}) not found` });
     }
 
     const token = generateToken(user);

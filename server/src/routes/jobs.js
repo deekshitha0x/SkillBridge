@@ -10,14 +10,17 @@ const prisma = new PrismaClient();
 /**
  * GET /api/jobs
  * Get list of all jobs with company info and challenges count
+ * NOTE: This route is intentionally public (read-only) for candidate browsing without authentication.
  */
 router.get('/', async (req, res) => {
   try {
     const jobs = await prisma.job.findMany({
       include: {
-        company: true,
+        company: {
+          select: { id: true, name: true, createdAt: true },
+        },
         challenges: {
-          select: { id: true, title: true, difficultyLevel: true },
+          select: { id: true, title: true, difficultyLevel: true, allowWaiver: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -33,6 +36,7 @@ router.get('/', async (req, res) => {
 /**
  * GET /api/jobs/:id
  * Get single job detail with required skills + similar jobs recommendation
+ * NOTE: This route is intentionally public (read-only) for candidate browsing without authentication.
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -41,7 +45,9 @@ router.get('/:id', async (req, res) => {
     const job = await prisma.job.findUnique({
       where: { id },
       include: {
-        company: true,
+        company: {
+          select: { id: true, name: true, createdAt: true },
+        },
         challenges: true,
       },
     });

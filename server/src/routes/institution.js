@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { shouldShowCandidateEmail } from '../lib/reviewValidation.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -117,9 +118,12 @@ router.get('/candidates', requireAuth, async (req, res) => {
 
     const { skillId, minLevel, status, search } = req.query;
 
+    const targetInstId = role === 'institution' ? req.user.institutionId : null;
+
     const students = await prisma.user.findMany({
       where: {
         role: 'student',
+        ...(targetInstId ? { institutionId: targetInstId } : {}),
         ...(search
           ? {
               OR: [
@@ -157,15 +161,33 @@ router.get('/candidates', requireAuth, async (req, res) => {
       });
     }
 
+    const applicantUserIds = new Set();
+    if (role === 'recruiter') {
+      const applicantSubmissions = await prisma.submission.findMany({
+        where: {
+          challenge: {
+            job: {
+              company: {
+                recruiterId: req.user.id,
+              },
+            },
+          },
+        },
+        select: { userId: true },
+      });
+      applicantSubmissions.forEach((s) => applicantUserIds.add(s.userId));
+    }
+
     const result = filteredStudents.map((student) => {
       const verifiedSkills = student.studentSkills.filter((ss) => ss.status === 'verified');
       const claimedSkills = student.studentSkills.filter((ss) => ss.status === 'claimed');
       const pendingSkills = student.studentSkills.filter((ss) => ss.status === 'pending');
 
-      return {
+      const canViewEmail = shouldShowCandidateEmail(role, student.id, applicantUserIds);
+
+      const candidateObj = {
         id: student.id,
         name: student.name,
-        email: student.email,
         aadhaarVerified: student.aadhaarVerified,
         verifiedSkillsCount: verifiedSkills.length,
         claimedSkillsCount: claimedSkills.length,
@@ -177,6 +199,12 @@ router.get('/candidates', requireAuth, async (req, res) => {
           level: ss.level,
         })),
       };
+
+      if (canViewEmail) {
+        candidateObj.email = student.email;
+      }
+
+      return candidateObj;
     });
 
     res.json(result);
