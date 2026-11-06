@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
         const jwt = (await import('jsonwebtoken')).default;
         const decoded = jwt.verify(
           token,
-          process.env.JWT_SECRET || 'skillbridge_hackathon_super_secret_jwt_key_2026'
+          process.env.JWT_SECRET
         );
         userId = decoded.userId;
       } catch (err) {

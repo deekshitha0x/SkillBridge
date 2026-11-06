@@ -11,8 +11,8 @@ const prisma = new PrismaClient();
  * @param {string} jobId
  * @returns {Promise<Array>} List of similar job objects with matchScore
  */
-export async function getSimilarJobs(jobId) {
-  const targetJob = await prisma.job.findUnique({
+export async function getSimilarJobs(jobId, prismaClient = prisma) {
+  const targetJob = await prismaClient.job.findUnique({
     where: { id: jobId },
     include: { company: true },
   });
@@ -33,7 +33,7 @@ export async function getSimilarJobs(jobId) {
     return [];
   }
 
-  const allJobs = await prisma.job.findMany({
+  const allJobs = await prismaClient.job.findMany({
     where: {
       id: { not: jobId },
     },

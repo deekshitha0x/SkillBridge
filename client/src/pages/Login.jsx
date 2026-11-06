@@ -1,17 +1,55 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+/**
+ * SkillBridge Authentication Gateway
+ *
+ * REQUIRED ELEMENTS:
+ * 1. Three one-click demo buttons:
+ *    - Student demo (Alex Chen) -> POST /api/auth/demo-login { role: 'student' } -> /student/dashboard
+ *    - Recruiter demo (TechCorp) -> POST /api/auth/demo-login { role: 'recruiter' } -> /recruiter/dashboard
+ *    - Institution demo (NIT Dean) -> POST /api/auth/demo-login { role: 'institution' } -> /institution/dashboard
+ * 2. Passwordless Email Sign In / Sign Up tabs (Demo Auth via POST /api/auth/google):
+ *    - Sign In: Email Address -> POST /api/auth/google { email, name }
+ *    - Sign Up: Full Name, Email Address, Role -> POST /api/auth/google { email, name, role }
+ * 3. Simulated Google OAuth form:
+ *    - Google Account Email -> POST /api/auth/google { email, name }
+ * 4. Simulated Aadhaar toggle onboarding step for unverified students (POST /api/auth/aadhaar)
+ * 5. Role selection step for accounts without an assigned role (POST /api/auth/role)
+ *
+ * DO NOT remove or conditionally hide these required demo or auth capabilities.
+ */
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { ShieldCheck, GraduationCap, Building2, Users, CheckSquare, Square, ArrowRight } from 'lucide-react';
+import {
+  ShieldCheck,
+  GraduationCap,
+  Building2,
+  Users,
+  CheckSquare,
+  Square,
+  ArrowRight,
+  UserPlus,
+  LogIn as LogInIcon,
+} from 'lucide-react';
 
 export function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, user, updateRole, verifyAadhaarSimulated, isAuthenticated } = useAuth();
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  // Mode: 'login' | 'signup'
+  const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
+  const [authMode, setAuthMode] = useState(initialMode);
+
+  // Form states for Passwordless Demo Auth
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [signupRole, setSignupRole] = useState('student');
+
+  // Google OAuth Mock State
   const [googleEmail, setGoogleEmail] = useState('');
 
   // Step 2: Role selection if user.role is missing
@@ -20,6 +58,17 @@ export function Login() {
   // Step 3: Simulated Aadhaar check for student onboarding
   const [aadhaarChecked, setAadhaarChecked] = useState(false);
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Sync mode if query param changes
+  useEffect(() => {
+    if (searchParams.get('mode') === 'signup') {
+      setAuthMode('signup');
+    }
+  }, [searchParams]);
+
+  // Fast one-click demo login for hackathon evaluators
   const handleDemoLogin = async (role) => {
     setLoading(true);
     setError('');
@@ -37,6 +86,63 @@ export function Login() {
     }
   };
 
+  // Demo email sign in (no password required - calls mock auth)
+  const handleEmailDemoLogin = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiFetch('/api/auth/google', {
+        method: 'POST',
+        body: JSON.stringify({ email, name: email.split('@')[0] }),
+      });
+      login(data.token, data.user);
+      if (data.user?.role) {
+        if (data.user.role === 'student' && !data.user.aadhaarVerified) {
+          // Stay on /login to complete Aadhaar verification step
+        } else {
+          navigate(`/${data.user.role}/dashboard`);
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'Demo sign in failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Demo email sign up (no password required - calls mock auth)
+  const handleEmailDemoSignup = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiFetch('/api/auth/google', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          name: name || email.split('@')[0],
+          role: signupRole,
+        }),
+      });
+      login(data.token, data.user);
+      if (data.user?.role) {
+        if (data.user.role === 'student' && !data.user.aadhaarVerified) {
+          // Stay on /login to complete Aadhaar verification step
+        } else {
+          navigate(`/${data.user.role}/dashboard`);
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'Demo registration failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Simulated Google OAuth login
   const handleGoogleSimulated = async (e) => {
     e.preventDefault();
     if (!googleEmail) return;
@@ -48,8 +154,12 @@ export function Login() {
         body: JSON.stringify({ email: googleEmail, name: googleEmail.split('@')[0] }),
       });
       login(data.token, data.user);
-      if (data.user.role) {
-        navigate(`/${data.user.role}/dashboard`);
+      if (data.user?.role) {
+        if (data.user.role === 'student' && !data.user.aadhaarVerified) {
+          // Stay on /login to complete Aadhaar verification step
+        } else {
+          navigate(`/${data.user.role}/dashboard`);
+        }
       }
     } catch (err) {
       setError(err.message || 'Google Auth failed');
@@ -58,12 +168,15 @@ export function Login() {
     }
   };
 
+  // Role submit for role-less accounts
   const handleRoleSubmit = async () => {
     setLoading(true);
     setError('');
     try {
       const updated = await updateRole(selectedRole);
-      if (selectedRole !== 'student') {
+      if (selectedRole === 'student' && !updated?.aadhaarVerified) {
+        // Stay to complete Aadhaar onboarding step
+      } else {
         navigate(`/${selectedRole}/dashboard`);
       }
     } catch (err) {
@@ -73,6 +186,7 @@ export function Login() {
     }
   };
 
+  // Aadhaar onboarding submit for students
   const handleAadhaarSubmit = async () => {
     setLoading(true);
     setError('');
@@ -88,23 +202,28 @@ export function Login() {
     }
   };
 
-  // View state check:
-  // 1) Not logged in -> Show login options
-  // 2) Logged in but user.role is null -> Show Role Selector
-  // 3) Logged in as student & aadhaarVerified is false -> Show Simulated Aadhaar verification step
+  // 1) AUTO-REDIRECT if user is already authenticated with a role (and verified if student)
+  if (isAuthenticated && user?.role && (user.role !== 'student' || user.aadhaarVerified)) {
+    return <Navigate to={`/${user.role}/dashboard`} replace />;
+  }
+
+  // 2) STEP CHECK FOR AUTHENTICATED STATES
   const needsRole = isAuthenticated && user && !user.role;
   const needsAadhaar = isAuthenticated && user && user.role === 'student' && !user.aadhaarVerified;
 
   return (
     <div className="min-h-screen bg-bone flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        {/* Logo */}
+        {/* Header Logo */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-ink-navy text-bone mx-auto flex items-center justify-center font-serif font-bold text-2xl shadow-md mb-3">
+          <div
+            onClick={() => navigate('/')}
+            className="w-12 h-12 rounded-xl bg-ink-navy text-bone mx-auto flex items-center justify-center font-serif font-bold text-2xl shadow-md mb-3 cursor-pointer hover:bg-slate transition"
+          >
             SB
           </div>
-          <h2 className="font-serif text-3xl font-bold text-ink-navy">SkillBridge Auth</h2>
-          <p className="text-xs text-slate mt-1">Hackathon SIH 2026 Authentication Gateway</p>
+          <h2 className="font-serif text-3xl font-bold text-ink-navy">SkillBridge Portal</h2>
+          <p className="text-xs text-slate mt-1">Verified Skill & Capability Authentication</p>
         </div>
 
         {error && (
@@ -113,14 +232,14 @@ export function Login() {
           </div>
         )}
 
-        {/* STEP 1: LOGIN OPTIONS */}
+        {/* --- STEP 1: UNAUTHENTICATED LOGIN / SIGN UP OPTIONS --- */}
         {!isAuthenticated && (
           <Card className="shadow-lg">
             <h3 className="font-serif text-lg font-bold text-ink-navy mb-4 text-center">
               Choose Login Method
             </h3>
 
-            {/* Quick Demo Logins for Hackathon Evaluators */}
+            {/* Quick Demo Logins for Hackathon Evaluators - Always visible */}
             <div className="space-y-2 mb-6">
               <span className="text-[10px] font-mono uppercase tracking-wider text-slate block mb-1">
                 Instant Demo Logins (No Credentials Needed)
@@ -166,15 +285,147 @@ export function Login() {
               </Button>
             </div>
 
+            {/* Divider */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-hairline-grey"></div>
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-white px-2 text-slate font-mono">OR GOOGLE OAUTH SIMULATION</span>
+                <span className="bg-white px-2 text-slate font-mono uppercase">OR EMAIL DEMO AUTH (NO PASSWORD)</span>
               </div>
             </div>
 
+            {/* Mode Switcher Tabs */}
+            <div className="flex border-b border-hairline-grey mb-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('login');
+                  setError('');
+                }}
+                className={`flex-1 py-2.5 text-sm font-serif font-bold border-b-2 transition flex items-center justify-center gap-2 ${
+                  authMode === 'login'
+                    ? 'border-ink-navy text-ink-navy'
+                    : 'border-transparent text-slate hover:text-ink-navy'
+                }`}
+              >
+                <LogInIcon className="w-4 h-4" />
+                Sign In (Demo)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('signup');
+                  setError('');
+                }}
+                className={`flex-1 py-2.5 text-sm font-serif font-bold border-b-2 transition flex items-center justify-center gap-2 ${
+                  authMode === 'signup'
+                    ? 'border-ink-navy text-ink-navy'
+                    : 'border-transparent text-slate hover:text-ink-navy'
+                }`}
+              >
+                <UserPlus className="w-4 h-4" />
+                Sign Up (Demo)
+              </button>
+            </div>
+
+            {/* TAB A: DEMO SIGN IN FORM */}
+            {authMode === 'login' && (
+              <form onSubmit={handleEmailDemoLogin} className="space-y-3.5 mb-6">
+                <div>
+                  <label className="block text-xs font-mono text-slate mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="alex.chen@student.nit.edu"
+                    required
+                    className="w-full px-3 py-2 text-sm bg-bone/50 border border-hairline-grey rounded-md focus:outline-none focus:ring-2 focus:ring-ink-navy"
+                  />
+                  <span className="text-[11px] text-slate mt-1 block">
+                    Enter any seeded or registered email (e.g. alex.chen@student.nit.edu, sarah@techcorp.com, dean@nit.edu).
+                  </span>
+                </div>
+
+                <Button type="submit" variant="primary" disabled={loading} className="w-full">
+                  {loading ? 'Authenticating...' : 'Sign In with Demo Email'}
+                </Button>
+              </form>
+            )}
+
+            {/* TAB B: DEMO SIGN UP FORM */}
+            {authMode === 'signup' && (
+              <form onSubmit={handleEmailDemoSignup} className="space-y-3.5 mb-6">
+                <div>
+                  <label className="block text-xs font-mono text-slate mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Jane Doe"
+                    required
+                    className="w-full px-3 py-2 text-sm bg-bone/50 border border-hairline-grey rounded-md focus:outline-none focus:ring-2 focus:ring-ink-navy"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono text-slate mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="jane@example.com"
+                    required
+                    className="w-full px-3 py-2 text-sm bg-bone/50 border border-hairline-grey rounded-md focus:outline-none focus:ring-2 focus:ring-ink-navy"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono text-slate mb-1">Select Account Type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'student', label: 'Student', icon: GraduationCap },
+                      { id: 'recruiter', label: 'Recruiter', icon: Building2 },
+                      { id: 'institution', label: 'Institution', icon: Users },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      const isSel = signupRole === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSignupRole(item.id)}
+                          className={`p-2.5 rounded border flex flex-col items-center gap-1 text-xs transition ${
+                            isSel
+                              ? 'border-ink-navy bg-ink-navy text-bone font-bold'
+                              : 'border-hairline-grey text-slate hover:border-slate bg-white'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Button type="submit" variant="primary" disabled={loading} className="w-full">
+                  {loading ? 'Creating Account...' : 'Create Demo Account & Continue'}
+                </Button>
+              </form>
+            )}
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-hairline-grey"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-white px-2 text-slate font-mono uppercase">OR GOOGLE OAUTH SIMULATION</span>
+              </div>
+            </div>
+
+            {/* Google OAuth Simulation */}
             <form onSubmit={handleGoogleSimulated} className="space-y-3">
               <div>
                 <label className="block text-xs font-mono text-slate mb-1">Google Account Email</label>
@@ -195,7 +446,7 @@ export function Login() {
           </Card>
         )}
 
-        {/* STEP 2: ROLE SELECTION SCREEN */}
+        {/* --- STEP 2: ROLE SELECTION SCREEN FOR ROLE-LESS ACCOUNTS --- */}
         {needsRole && (
           <Card className="shadow-lg">
             <h3 className="font-serif text-xl font-bold text-ink-navy mb-2 text-center">
@@ -262,7 +513,7 @@ export function Login() {
           </Card>
         )}
 
-        {/* STEP 3: SIMULATED AADHAAR VERIFICATION STEP */}
+        {/* --- STEP 3: SIMULATED AADHAAR VERIFICATION STEP --- */}
         {needsAadhaar && (
           <Card className="shadow-lg">
             <div className="w-10 h-10 rounded-full bg-verified-green/10 text-verified-green mx-auto flex items-center justify-center mb-3">

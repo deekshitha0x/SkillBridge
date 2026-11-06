@@ -90,6 +90,7 @@ model Challenge {
   difficultyLevel  Int          @default(1)
   timeLimitMinutes Int          @default(60)
   status           String       @default("open") // "open", "closed"
+  allowWaiver      Boolean      @default(true)
   createdAt        DateTime     @default(now())
 
   job         Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
@@ -101,6 +102,7 @@ model Submission {
   challengeId         String
   userId              String
   content             String
+  isWaiver            Boolean   @default(false)
   status              String    @default("pending") // "pending", "reviewed"
   hiringStatus        String    @default("pending") // "pending", "shortlisted", "hired", "rejected"
   verifiedByRecruiter Boolean   @default(false)
@@ -109,5 +111,7 @@ model Submission {
 
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
 }
 

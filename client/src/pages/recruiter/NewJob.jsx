@@ -94,6 +94,7 @@ export function RecruiterNewJob() {
             requiredSkills,
             difficultyLevel: difficulty,
             timeLimitMinutes: timeLimit,
+            allowWaiver,
           }),
         });
       }
@@ -268,6 +269,18 @@ export function RecruiterNewJob() {
                       className="w-full px-3 py-1.5 text-xs bg-white border border-hairline-grey rounded focus:outline-none"
                     />
                   </div>
+                </div>
+
+                <div className="pt-3 border-t border-hairline-grey/60">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-ink-navy">
+                    <input
+                      type="checkbox"
+                      checked={allowWaiver}
+                      onChange={(e) => setAllowWaiver(e.target.checked)}
+                      className="w-4 h-4 rounded border-hairline-grey text-ink-navy focus:ring-ink-navy"
+                    />
+                    Accept pre-verified skills (students already verified in all required skills can apply without solving this challenge)
+                  </label>
                 </div>
               </div>
             )}

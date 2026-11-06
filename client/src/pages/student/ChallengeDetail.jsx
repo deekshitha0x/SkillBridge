@@ -51,6 +51,23 @@ export function StudentChallengeDetail() {
     }
   };
 
+  const handleApplyWaiver = async () => {
+    setSubmitting(true);
+    setSubmitError('');
+    setSubmitSuccess('');
+    try {
+      const res = await apiFetch(`/api/challenges/${id}/waiver`, {
+        method: 'POST',
+      });
+      setSubmitSuccess(res.message || 'Applied with verified skills successfully!');
+      loadData();
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to apply with verified skills');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-slate font-mono text-sm">Loading challenge environment...</div>;
   }
@@ -68,9 +85,12 @@ export function StudentChallengeDetail() {
 
   const { challenge, eligibility } = challengeData;
   const isEligible = eligibility?.eligible !== false;
+  const allAlreadyVerified = eligibility?.allAlreadyVerified === true;
+  const allowWaiver = challenge.allowWaiver !== false;
   const submissions = challenge.submissions || [];
   const hasSubmitted = submissions.length > 0;
   const latestSubmission = hasSubmitted ? submissions[0] : null;
+  const isWaiver = latestSubmission?.isWaiver === true;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -150,26 +170,93 @@ export function StudentChallengeDetail() {
       {hasSubmitted ? (
         <Card>
           <CardHeader title="Your Submission Record" subtitle="Submitted to recruiter verification queue" />
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono p-3 bg-bone rounded border">
-              <span>Status: <strong className="uppercase text-ink-navy">{latestSubmission.status}</strong></span>
-              <span>Tab Switches Logged: <strong>{latestSubmission.tabSwitches}</strong></span>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono p-3 bg-bone rounded border gap-2">
+              <div className="flex items-center gap-2">
+                <span>Status: <strong className="uppercase text-ink-navy">{latestSubmission.status}</strong></span>
+                {latestSubmission.hiringStatus && latestSubmission.hiringStatus !== 'pending' && (
+                  <Badge variant={latestSubmission.hiringStatus === 'hired' ? 'verified' : latestSubmission.hiringStatus === 'shortlisted' ? 'gold' : 'coral'}>
+                    {latestSubmission.hiringStatus.toUpperCase()}
+                  </Badge>
+                )}
+              </div>
+              {!isWaiver && (
+                <span>Tab Switches Logged: <strong>{latestSubmission.tabSwitches}</strong></span>
+              )}
               <span>Submitted: {new Date(latestSubmission.createdAt).toLocaleString()}</span>
             </div>
 
-            <div>
-              <span className="text-xs font-mono uppercase text-slate block mb-1">Submitted Source Code</span>
-              <pre className="p-4 bg-ink-navy text-bone rounded-lg text-xs font-mono overflow-x-auto">
-                {latestSubmission.content}
-              </pre>
-            </div>
+            {isWaiver ? (
+              <div className="p-4 bg-verified-green/10 border border-verified-green/30 rounded-lg text-verified-green space-y-1">
+                <div className="flex items-center gap-2 font-semibold text-sm">
+                  <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                  Applied with verified skills
+                </div>
+                <p className="text-xs text-slate font-sans leading-relaxed">
+                  All required skills for this challenge were already verified on your profile at or above the requested levels. Your application has been submitted for recruiter review without requiring a new challenge code solution.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <span className="text-xs font-mono uppercase text-slate block mb-1">Submitted Source Code</span>
+                <pre className="p-4 bg-ink-navy text-bone rounded-lg text-xs font-mono overflow-x-auto">
+                  {latestSubmission.content}
+                </pre>
+              </div>
+            )}
           </div>
         </Card>
       ) : isEligible ? (
-        <Card>
-          <CardHeader title="Submit Challenge Solution" subtitle="Write or paste your code implementation below" />
-          <SubmissionForm onSubmit={handleSubmitSolution} loading={submitting} />
-        </Card>
+        <div className="space-y-6">
+          {allAlreadyVerified && (
+            allowWaiver ? (
+              <Card className="border-verified-green/40 bg-bone/30">
+                <div className="p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-verified-green/10 flex items-center justify-center shrink-0 text-verified-green">
+                      <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-serif font-bold text-lg text-ink-navy">
+                        Apply with Verified Skills
+                      </h3>
+                      <p className="text-xs text-slate leading-relaxed">
+                        You have already verified all skills required for this challenge at or above the requested levels. You can apply directly with your pre-verified credentials without re-solving this challenge.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-hairline-grey/60">
+                    <Button
+                      variant="verified"
+                      disabled={submitting}
+                      onClick={handleApplyWaiver}
+                      className="flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                      {submitting ? 'Submitting...' : 'Apply with verified skills'}
+                    </Button>
+                    <span className="text-xs text-slate font-mono">
+                      Direct submission • No code re-test needed
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <div className="p-3 bg-bone/60 border border-hairline-grey rounded-lg text-xs font-mono text-slate flex items-center gap-2">
+                <span>This company requires you to complete its own challenge.</span>
+              </div>
+            )
+          )}
+
+          <Card>
+            <CardHeader
+              title="Submit Challenge Solution"
+              subtitle={allAlreadyVerified ? "Or submit a custom code implementation below if you prefer to solve the challenge" : "Write or paste your code implementation below"}
+            />
+            <SubmissionForm onSubmit={handleSubmitSolution} loading={submitting} />
+          </Card>
+        </div>
       ) : null}
     </div>
   );

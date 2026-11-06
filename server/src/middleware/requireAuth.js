@@ -11,7 +11,7 @@ export async function requireAuth(req, res, next) {
     }
 
     const token = authHeader.split(' ')[1];
-    const secret = process.env.JWT_SECRET || 'skillbridge_hackathon_super_secret_jwt_key_2026';
+    const secret = process.env.JWT_SECRET;
 
     const decoded = jwt.verify(token, secret);
     
