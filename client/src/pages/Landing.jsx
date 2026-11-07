@@ -38,14 +38,9 @@ export function Landing() {
             <div className="w-9 h-9 rounded-lg bg-ink-navy flex items-center justify-center text-bone font-serif font-bold text-xl shadow">
               SB
             </div>
-            <div>
-              <span className="font-serif font-bold text-xl tracking-tight text-ink-navy">
-                SkillBridge
-              </span>
-              <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-ledger-gold/20 text-ledger-gold">
-                SIH 2026 MVP
-              </span>
-            </div>
+            <span className="font-serif font-bold text-xl tracking-tight text-ink-navy">
+              SkillBridge
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -246,7 +241,7 @@ export function Landing() {
       <footer className="border-t border-hairline-grey bg-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate font-mono">
           <div>
-            © 2026 SkillBridge MVP — Hackathon Prototype (SIH 2026). All Rights Reserved.
+            © 2026 SkillBridge. All Rights Reserved.
           </div>
           <div className="mt-4 sm:mt-0 flex gap-6">
             <span>Node + Express REST API</span>
