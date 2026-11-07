@@ -93,7 +93,7 @@ export function StudentDashboard() {
             </div>
             <h3 className="font-serif text-lg font-bold text-ink-navy mb-1">Skill Verification</h3>
             <p className="text-xs text-slate mb-4">
-              Declare skills and complete proctored quiz assessments to earn claimed status and skill levels.
+              Declare skills and complete assessment quizzes with anti-cheat monitoring to earn claimed status and skill levels.
             </p>
           </div>
           <Button variant="verified" size="sm" onClick={() => navigate('/student/skill-profile')} className="w-full">
