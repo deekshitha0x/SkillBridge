@@ -524,7 +524,7 @@ export function Login() {
               Identity Onboarding
             </h3>
             <p className="text-xs text-slate text-center mb-6">
-              Simulated Aadhaar Verification (UIDAI hackathon placeholder step)
+              Simulated Aadhaar Verification (UIDAI placeholder step)
             </p>
 
             <div className="p-4 bg-bone rounded-lg border border-hairline-grey mb-6">
@@ -542,7 +542,7 @@ export function Login() {
                     Verify with Aadhaar (Simulated)
                   </span>
                   <span className="text-xs text-slate block mt-0.5">
-                    I confirm my identity verification for SkillBridge verified profile credentials. (No real UIDAI API called for SIH MVP).
+                    I confirm my identity verification for SkillBridge verified profile credentials. (Simulated verification).
                   </span>
                 </div>
               </div>
