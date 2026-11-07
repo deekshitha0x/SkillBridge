@@ -83,7 +83,7 @@ export function Landing() {
         </h1>
 
         <p className="text-lg sm:text-xl text-slate max-w-2xl mx-auto mb-10 leading-relaxed font-sans">
-          SkillBridge enables students to claim skills, pass proctored assessment quizzes, attempt eligible company hiring challenges, and build a reusable verified skill ledger.
+          SkillBridge enables students to claim skills, pass assessment quizzes with anti-cheat monitoring, attempt eligible company hiring challenges, and build a reusable verified skill ledger.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -206,7 +206,7 @@ export function Landing() {
             <ul className="space-y-2 text-xs font-mono text-slate mb-6">
               <li className="flex items-center gap-1.5">✓ Simulated Aadhaar verification</li>
               <li className="flex items-center gap-1.5">✓ Verified Skill Profile portfolio</li>
-              <li className="flex items-center gap-1.5">✓ Challenge submission proctoring</li>
+              <li className="flex items-center gap-1.5">✓ Challenge submissions with recruiter review</li>
             </ul>
           </Card>
 

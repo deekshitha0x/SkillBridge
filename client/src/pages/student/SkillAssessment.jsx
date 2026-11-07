@@ -149,7 +149,7 @@ export function SkillAssessment() {
   if (loading) {
     return (
       <div className="p-8 text-center text-slate font-mono text-sm">
-        Loading proctored assessment quiz...
+        Loading assessment quiz with anti-cheat monitoring...
       </div>
     );
   }
@@ -249,7 +249,7 @@ export function SkillAssessment() {
           <div className="border-b border-hairline-grey pb-4 mb-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-mono text-slate uppercase tracking-wider">
-                Proctored Verification Assessment
+                Verification Assessment with Anti-Cheat Monitoring
               </span>
               <Badge variant="gold" icon={false}>
                 Pass Score: {assessment.passScore}%
